@@ -163,6 +163,72 @@ class CycleRepository implements CycleStore
         return $this->pdo->query($sql)->fetchAll();
     }
 
+    public function getCycle(int $cycleId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT c.id, c.name, c.status, c.owner,
+                    c.start_date, c.end_date,
+                    COUNT(DISTINCT m.id) AS milestone_count,
+                    COUNT(DISTINCT n.id) AS note_count
+             FROM {$this->schema}.cycles c
+             LEFT JOIN {$this->schema}.milestones m ON m.cycle_id = c.id
+             LEFT JOIN {$this->schema}.notes n ON n.cycle_id = c.id
+             WHERE c.id = :id
+             GROUP BY c.id"
+        );
+
+        $stmt->execute(['id' => $cycleId]);
+        $cycle = $stmt->fetch();
+
+        return $cycle === false ? null : $cycle;
+    }
+
+    public function listMilestones(int $cycleId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT id, name, due_date, owner, status
+             FROM {$this->schema}.milestones
+             WHERE cycle_id = :cycle_id
+             ORDER BY due_date"
+        );
+
+        $stmt->execute(['cycle_id' => $cycleId]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function listNotes(int $cycleId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT id, note, created_at
+             FROM {$this->schema}.notes
+             WHERE cycle_id = :cycle_id
+             ORDER BY created_at DESC"
+        );
+
+        $stmt->execute(['cycle_id' => $cycleId]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function listUpcomingMilestones(int $days): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT m.id, m.name, m.due_date, m.owner, m.status,
+                    c.id AS cycle_id, c.name AS cycle_name,
+                    (m.due_date - CURRENT_DATE) AS days_to_due
+             FROM {$this->schema}.milestones m
+             JOIN {$this->schema}.cycles c ON c.id = m.cycle_id
+             WHERE m.due_date >= CURRENT_DATE
+               AND m.due_date <= CURRENT_DATE + (:days * INTERVAL '1 day')
+             ORDER BY m.due_date"
+        );
+
+        $stmt->execute(['days' => $days]);
+
+        return $stmt->fetchAll();
+    }
+
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int
     {
         $stmt = $this->pdo->prepare(
@@ -218,6 +284,20 @@ class CycleRepository implements CycleStore
         $stmt->execute([
             'status' => $status,
             'id' => $cycleId,
+        ]);
+
+        return $stmt->rowCount();
+    }
+
+    public function updateMilestoneStatus(int $milestoneId, string $status): int
+    {
+        $stmt = $this->pdo->prepare(
+            "UPDATE {$this->schema}.milestones SET status = :status WHERE id = :id"
+        );
+
+        $stmt->execute([
+            'status' => $status,
+            'id' => $milestoneId,
         ]);
 
         return $stmt->rowCount();

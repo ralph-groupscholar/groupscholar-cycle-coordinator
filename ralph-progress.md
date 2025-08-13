@@ -4,3 +4,6 @@
 - Initialized `groupscholar-cycle-coordinator` PHP CLI.
 - Added PostgreSQL-backed schema for cycles, milestones, and notes.
 - Implemented CLI commands, in-memory tests, and documentation.
+- Added cycle detail and upcoming milestone commands plus milestone status updates.
+- Expanded repository/memory store APIs and tests to cover new workflows.
+- Updated README usage to reflect the new operational views.

@@ -71,6 +71,77 @@ class MemoryCycleStore implements CycleStore
         return $rows;
     }
 
+    public function getCycle(int $cycleId): ?array
+    {
+        foreach ($this->listCycles() as $cycle) {
+            if ($cycle['id'] === $cycleId) {
+                return $cycle;
+            }
+        }
+
+        return null;
+    }
+
+    public function listMilestones(int $cycleId): array
+    {
+        $rows = [];
+        foreach ($this->milestones as $milestone) {
+            if ($milestone['cycle_id'] === $cycleId) {
+                $rows[] = $milestone;
+            }
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['due_date'], $b['due_date']));
+
+        return $rows;
+    }
+
+    public function listNotes(int $cycleId): array
+    {
+        $rows = [];
+        foreach ($this->notes as $note) {
+            if ($note['cycle_id'] === $cycleId) {
+                $rows[] = $note + ['created_at' => $note['created_at'] ?? ''];
+            }
+        }
+
+        return $rows;
+    }
+
+    public function listUpcomingMilestones(int $days): array
+    {
+        $today = new \DateTimeImmutable('today');
+        $limit = $today->modify('+' . $days . ' days');
+
+        $cycleNames = [];
+        foreach ($this->cycles as $cycle) {
+            $cycleNames[$cycle['id']] = $cycle['name'];
+        }
+
+        $rows = [];
+        foreach ($this->milestones as $milestone) {
+            $due = new \DateTimeImmutable($milestone['due_date']);
+            if ($due < $today || $due > $limit) {
+                continue;
+            }
+            $daysToDue = (int) $today->diff($due)->format('%a');
+            $rows[] = [
+                'id' => $milestone['id'],
+                'name' => $milestone['name'],
+                'due_date' => $milestone['due_date'],
+                'owner' => $milestone['owner'],
+                'status' => $milestone['status'],
+                'cycle_id' => $milestone['cycle_id'],
+                'cycle_name' => $cycleNames[$milestone['cycle_id']] ?? 'Unknown',
+                'days_to_due' => $daysToDue,
+            ];
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['due_date'], $b['due_date']));
+
+        return $rows;
+    }
+
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int
     {
         $id = $this->nextCycleId++;
@@ -114,6 +185,19 @@ class MemoryCycleStore implements CycleStore
         return $updated;
     }
 
+    public function updateMilestoneStatus(int $milestoneId, string $status): int
+    {
+        $updated = 0;
+        foreach ($this->milestones as &$milestone) {
+            if ($milestone['id'] === $milestoneId) {
+                $milestone['status'] = $status;
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
     public function addNote(int $cycleId, string $note): int
     {
         $id = $this->nextNoteId++;
@@ -121,6 +205,7 @@ class MemoryCycleStore implements CycleStore
             'id' => $id,
             'cycle_id' => $cycleId,
             'note' => $note,
+            'created_at' => date('Y-m-d H:i:s'),
         ];
 
         return $id;

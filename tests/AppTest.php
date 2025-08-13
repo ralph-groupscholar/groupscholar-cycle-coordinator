@@ -17,7 +17,10 @@ class AppTest
         $this->testSeedAndList();
         $this->testAddCycle();
         $this->testUpdateStatus();
+        $this->testUpdateMilestone();
         $this->testAddNote();
+        $this->testCycleDetail();
+        $this->testUpcoming();
     }
 
     private function assertTrue(bool $condition, string $message): void
@@ -84,5 +87,49 @@ class AppTest
         $exitCode = $app->handle(['app', 'add-note', '1', 'Follow up with reviewers'], $store);
         $this->assertTrue($exitCode === 0, 'Add-note should succeed.');
         $this->assertTrue(count($store->notes) === 1, 'Note should be added.');
+    }
+
+    private function testUpdateMilestone(): void
+    {
+        $store = new MemoryCycleStore();
+        $store->addCycle('Test Cycle', '2026-01-01', '2026-02-01', 'Owner');
+        $store->addMilestone(1, 'Kickoff', '2026-01-10', 'Owner');
+        $output = new Output(true);
+        $app = new App($output);
+
+        $exitCode = $app->handle(['app', 'update-milestone', '1', 'complete'], $store);
+        $this->assertTrue($exitCode === 0, 'Update-milestone should succeed.');
+        $this->assertTrue($store->milestones[0]['status'] === 'complete', 'Milestone status should update.');
+    }
+
+    private function testCycleDetail(): void
+    {
+        $store = new MemoryCycleStore();
+        $store->seed();
+        $output = new Output(true);
+        $app = new App($output);
+
+        $exitCode = $app->handle(['app', 'cycle', '1'], $store);
+        $this->assertTrue($exitCode === 0, 'Cycle detail should succeed.');
+
+        $lines = implode("\n", $output->lines());
+        $this->assertTrue(str_contains($lines, 'Cycle 1:'), 'Cycle header should appear.');
+        $this->assertTrue(str_contains($lines, 'Application window launch'), 'Milestones should appear.');
+        $this->assertTrue(str_contains($lines, 'Ensure reviewer onboarding'), 'Notes should appear.');
+    }
+
+    private function testUpcoming(): void
+    {
+        $store = new MemoryCycleStore();
+        $store->addCycle('Test Cycle', '2026-01-01', '2026-02-01', 'Owner');
+        $store->addMilestone(1, 'Upcoming Milestone', date('Y-m-d', strtotime('+5 days')), 'Owner');
+        $output = new Output(true);
+        $app = new App($output);
+
+        $exitCode = $app->handle(['app', 'upcoming', '10'], $store);
+        $this->assertTrue($exitCode === 0, 'Upcoming should succeed.');
+
+        $lines = implode("\n", $output->lines());
+        $this->assertTrue(str_contains($lines, 'Upcoming Milestone'), 'Upcoming milestone should appear.');
     }
 }

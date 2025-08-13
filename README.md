@@ -5,6 +5,9 @@ CLI to orchestrate scholarship cycle planning: track cycles, milestones, and ops
 ## Features
 - Create and list scholarship cycles with owners and statuses
 - Add milestones and notes for each cycle
+- View a cycle detail dashboard with milestones and notes
+- Track upcoming milestones across cycles
+- Update milestone statuses
 - Seed realistic sample cycles for a live demo
 - PostgreSQL schema isolation via `groupscholar_cycle_coordinator`
 
@@ -32,7 +35,10 @@ php bin/cycle-coordinator.php list
 php bin/cycle-coordinator.php add-cycle "Spring 2027 Scholarship Cycle" 2027-02-01 2027-06-30 "Program Ops"
 php bin/cycle-coordinator.php add-milestone 1 "Review sprint" 2027-03-10 "Review Leads"
 php bin/cycle-coordinator.php update-status 1 "in-progress"
+php bin/cycle-coordinator.php update-milestone 2 "complete"
 php bin/cycle-coordinator.php add-note 1 "Confirm reviewer onboarding dates"
+php bin/cycle-coordinator.php cycle 1
+php bin/cycle-coordinator.php upcoming 45
 ```
 
 ## Tests
