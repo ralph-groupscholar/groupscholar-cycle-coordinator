@@ -28,14 +28,18 @@ class MemoryCycleStore implements CycleStore
         $this->nextMilestoneId = 1;
         $this->nextNoteId = 1;
 
-        $this->addCycle('Spring 2026 Scholarship Cycle', '2026-02-01', '2026-06-30', 'Program Ops');
-        $this->addCycle('Fall 2026 Scholarship Cycle', '2026-08-01', '2026-12-15', 'Scholar Success');
-        $this->addMilestone(1, 'Application window launch', '2026-02-05', 'Community Team');
-        $this->addMilestone(1, 'Review sprint #1', '2026-03-10', 'Review Leads');
-        $this->addMilestone(2, 'Scholar outreach kickoff', '2026-07-15', 'Engagement');
-        $this->addNote(1, 'Ensure reviewer onboarding is complete by Feb 12.');
-        $this->addNote(1, 'Confirm award budget ceiling with finance.');
-        $this->addNote(2, 'Draft outreach playbook for August cohort.');
+        $springId = $this->addCycle('Spring 2026 Scholarship Cycle', '2026-02-01', '2026-06-30', 'Program Ops');
+        $fallId = $this->addCycle('Fall 2026 Scholarship Cycle', '2026-08-01', '2026-12-15', 'Scholar Success');
+        $this->updateStatus($springId, 'in-progress');
+
+        $launchId = $this->addMilestone($springId, 'Application window launch', '2026-02-05', 'Community Team');
+        $reviewId = $this->addMilestone($springId, 'Review sprint #1', '2026-03-10', 'Review Leads');
+        $this->addMilestone($fallId, 'Scholar outreach kickoff', '2026-07-15', 'Engagement');
+        $this->updateMilestoneStatus($launchId, 'complete');
+        $this->updateMilestoneStatus($reviewId, 'in-progress');
+        $this->addNote($springId, 'Ensure reviewer onboarding is complete by Feb 12.');
+        $this->addNote($springId, 'Confirm award budget ceiling with finance.');
+        $this->addNote($fallId, 'Draft outreach playbook for August cohort.');
 
         return 2;
     }
@@ -101,9 +105,11 @@ class MemoryCycleStore implements CycleStore
         $rows = [];
         foreach ($this->notes as $note) {
             if ($note['cycle_id'] === $cycleId) {
-                $rows[] = $note + ['created_at' => $note['created_at'] ?? ''];
+                $rows[] = $note;
             }
         }
+
+        usort($rows, fn ($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         return $rows;
     }
@@ -111,29 +117,32 @@ class MemoryCycleStore implements CycleStore
     public function listUpcomingMilestones(int $days): array
     {
         $today = new \DateTimeImmutable('today');
-        $limit = $today->modify('+' . $days . ' days');
-
-        $cycleNames = [];
-        foreach ($this->cycles as $cycle) {
-            $cycleNames[$cycle['id']] = $cycle['name'];
-        }
-
+        $cutoff = $today->modify("+{$days} days");
         $rows = [];
+
         foreach ($this->milestones as $milestone) {
             $due = new \DateTimeImmutable($milestone['due_date']);
-            if ($due < $today || $due > $limit) {
+            if ($due < $today || $due > $cutoff) {
                 continue;
             }
-            $daysToDue = (int) $today->diff($due)->format('%a');
+
+            $cycleName = '';
+            foreach ($this->cycles as $cycle) {
+                if ($cycle['id'] === $milestone['cycle_id']) {
+                    $cycleName = $cycle['name'];
+                    break;
+                }
+            }
+
             $rows[] = [
                 'id' => $milestone['id'],
                 'name' => $milestone['name'],
                 'due_date' => $milestone['due_date'],
                 'owner' => $milestone['owner'],
                 'status' => $milestone['status'],
+                'cycle_name' => $cycleName,
                 'cycle_id' => $milestone['cycle_id'],
-                'cycle_name' => $cycleNames[$milestone['cycle_id']] ?? 'Unknown',
-                'days_to_due' => $daysToDue,
+                'days_to_due' => (int) $today->diff($due)->format('%a'),
             ];
         }
 
