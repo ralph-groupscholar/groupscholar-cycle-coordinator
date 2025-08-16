@@ -11,6 +11,7 @@ interface CycleStore
     public function listMilestones(int $cycleId): array;
     public function listNotes(int $cycleId): array;
     public function listUpcomingMilestones(int $days): array;
+    public function listOverdueMilestones(int $daysBack): array;
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int;
     public function addMilestone(int $cycleId, string $name, string $dueDate, string $owner): int;
     public function updateStatus(int $cycleId, string $status): int;

@@ -229,6 +229,25 @@ class CycleRepository implements CycleStore
         return $stmt->fetchAll();
     }
 
+    public function listOverdueMilestones(int $daysBack): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT m.id, m.name, m.due_date, m.owner, m.status,
+                    c.id AS cycle_id, c.name AS cycle_name,
+                    (CURRENT_DATE - m.due_date) AS days_overdue
+             FROM {$this->schema}.milestones m
+             JOIN {$this->schema}.cycles c ON c.id = m.cycle_id
+             WHERE m.due_date < CURRENT_DATE
+               AND m.due_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+               AND m.status <> 'complete'
+             ORDER BY m.due_date"
+        );
+
+        $stmt->execute(['days' => $daysBack]);
+
+        return $stmt->fetchAll();
+    }
+
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int
     {
         $stmt = $this->pdo->prepare(

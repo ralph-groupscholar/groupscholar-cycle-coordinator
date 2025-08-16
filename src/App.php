@@ -45,6 +45,8 @@ class App
                 return $this->handleShowCycle($argv, $repository);
             case 'upcoming':
                 return $this->handleUpcoming($argv, $repository);
+            case 'overdue':
+                return $this->handleOverdue($argv, $repository);
             default:
                 $this->output->error("Unknown command: {$command}");
                 $this->printHelp();
@@ -66,6 +68,41 @@ class App
 
         $cycleId = $repository->addCycle($name, $startDate, $endDate, $owner);
         $this->output->success("Cycle created with ID {$cycleId}.");
+        return 0;
+    }
+
+    private function handleOverdue(array $argv, CycleStore $repository): int
+    {
+        $days = $argv[2] ?? '30';
+        if (!is_numeric($days) || (int) $days <= 0) {
+            $this->output->error('Usage: overdue 30');
+            return 1;
+        }
+
+        $milestones = $repository->listOverdueMilestones((int) $days);
+        if (count($milestones) === 0) {
+            $this->output->info('No overdue milestones found.');
+            return 0;
+        }
+
+        $rows = [];
+        foreach ($milestones as $milestone) {
+            $rows[] = [
+                $milestone['id'],
+                $milestone['name'],
+                $milestone['due_date'],
+                $milestone['owner'],
+                $milestone['status'],
+                $milestone['cycle_name'],
+                $milestone['days_overdue'],
+            ];
+        }
+
+        $this->output->table(
+            ['ID', 'Milestone', 'Due', 'Owner', 'Status', 'Cycle', 'Days'],
+            $rows
+        );
+
         return 0;
     }
 
@@ -278,5 +315,6 @@ class App
         $this->output->line('  add-note 1 "Note text"');
         $this->output->line('  cycle 1');
         $this->output->line('  upcoming 30');
+        $this->output->line('  overdue 30');
     }
 }

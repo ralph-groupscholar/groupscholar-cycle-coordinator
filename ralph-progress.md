@@ -12,3 +12,8 @@
 - Aligned MemoryCycleStore with extended CycleStore interface for cycle detail and upcoming milestone views.
 - Updated seed data to mirror production statuses and added created timestamps to notes.
 - Cleaned duplicate methods and verified expanded CLI coverage with passing tests.
+
+## 2026-02-08
+- Added overdue milestone tracking command with recent-window filter.
+- Updated repository/store interfaces and tests to cover overdue milestone workflows.
+- Documented the new overdue view in CLI usage.

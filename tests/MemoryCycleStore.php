@@ -151,6 +151,46 @@ class MemoryCycleStore implements CycleStore
         return $rows;
     }
 
+    public function listOverdueMilestones(int $daysBack): array
+    {
+        $today = new \DateTimeImmutable('today');
+        $cutoff = $today->modify("-{$daysBack} days");
+        $rows = [];
+
+        foreach ($this->milestones as $milestone) {
+            $due = new \DateTimeImmutable($milestone['due_date']);
+            if ($due >= $today || $due < $cutoff) {
+                continue;
+            }
+            if ($milestone['status'] === 'complete') {
+                continue;
+            }
+
+            $cycleName = '';
+            foreach ($this->cycles as $cycle) {
+                if ($cycle['id'] === $milestone['cycle_id']) {
+                    $cycleName = $cycle['name'];
+                    break;
+                }
+            }
+
+            $rows[] = [
+                'id' => $milestone['id'],
+                'name' => $milestone['name'],
+                'due_date' => $milestone['due_date'],
+                'owner' => $milestone['owner'],
+                'status' => $milestone['status'],
+                'cycle_name' => $cycleName,
+                'cycle_id' => $milestone['cycle_id'],
+                'days_overdue' => (int) $due->diff($today)->format('%a'),
+            ];
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['due_date'], $b['due_date']));
+
+        return $rows;
+    }
+
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int
     {
         $id = $this->nextCycleId++;
