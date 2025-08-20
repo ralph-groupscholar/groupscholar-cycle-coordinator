@@ -248,6 +248,33 @@ class CycleRepository implements CycleStore
         return $stmt->fetchAll();
     }
 
+    public function listCycleHealth(int $upcomingDays): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT c.id, c.name, c.status, c.owner,
+                    c.start_date, c.end_date,
+                    COUNT(m.id) AS milestone_total,
+                    COUNT(m.id) FILTER (WHERE m.status = 'complete') AS milestone_complete,
+                    COUNT(m.id) FILTER (WHERE m.status = 'in-progress') AS milestone_in_progress,
+                    COUNT(m.id) FILTER (WHERE m.status = 'planned') AS milestone_planned,
+                    COUNT(m.id) FILTER (
+                        WHERE m.due_date < CURRENT_DATE AND m.status <> 'complete'
+                    ) AS milestone_overdue,
+                    COUNT(m.id) FILTER (
+                        WHERE m.due_date >= CURRENT_DATE
+                          AND m.due_date <= CURRENT_DATE + (:days * INTERVAL '1 day')
+                    ) AS milestone_upcoming
+             FROM {$this->schema}.cycles c
+             LEFT JOIN {$this->schema}.milestones m ON m.cycle_id = c.id
+             GROUP BY c.id
+             ORDER BY c.start_date"
+        );
+
+        $stmt->execute(['days' => $upcomingDays]);
+
+        return $stmt->fetchAll();
+    }
+
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int
     {
         $stmt = $this->pdo->prepare(

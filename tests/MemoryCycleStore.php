@@ -191,6 +191,65 @@ class MemoryCycleStore implements CycleStore
         return $rows;
     }
 
+    public function listCycleHealth(int $upcomingDays): array
+    {
+        $today = new \DateTimeImmutable('today');
+        $cutoff = $today->modify("+{$upcomingDays} days");
+        $rows = [];
+
+        foreach ($this->cycles as $cycle) {
+            $milestones = array_filter(
+                $this->milestones,
+                fn ($milestone) => $milestone['cycle_id'] === $cycle['id']
+            );
+
+            $total = count($milestones);
+            $complete = 0;
+            $inProgress = 0;
+            $planned = 0;
+            $overdue = 0;
+            $upcoming = 0;
+
+            foreach ($milestones as $milestone) {
+                if ($milestone['status'] === 'complete') {
+                    $complete++;
+                } elseif ($milestone['status'] === 'in-progress') {
+                    $inProgress++;
+                } else {
+                    $planned++;
+                }
+
+                $due = new \DateTimeImmutable($milestone['due_date']);
+                if ($due < $today && $milestone['status'] !== 'complete') {
+                    $overdue++;
+                }
+
+                if ($due >= $today && $due <= $cutoff) {
+                    $upcoming++;
+                }
+            }
+
+            $rows[] = [
+                'id' => $cycle['id'],
+                'name' => $cycle['name'],
+                'status' => $cycle['status'],
+                'owner' => $cycle['owner'],
+                'start_date' => $cycle['start_date'],
+                'end_date' => $cycle['end_date'],
+                'milestone_total' => $total,
+                'milestone_complete' => $complete,
+                'milestone_in_progress' => $inProgress,
+                'milestone_planned' => $planned,
+                'milestone_overdue' => $overdue,
+                'milestone_upcoming' => $upcoming,
+            ];
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['start_date'], $b['start_date']));
+
+        return $rows;
+    }
+
     public function addCycle(string $name, string $startDate, string $endDate, string $owner): int
     {
         $id = $this->nextCycleId++;

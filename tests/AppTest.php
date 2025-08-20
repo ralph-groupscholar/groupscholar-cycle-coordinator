@@ -22,6 +22,7 @@ class AppTest
         $this->testCycleDetail();
         $this->testUpcoming();
         $this->testOverdue();
+        $this->testHealth();
     }
 
     private function assertTrue(bool $condition, string $message): void
@@ -150,5 +151,23 @@ class AppTest
         $lines = implode("\n", $output->lines());
         $this->assertTrue(str_contains($lines, 'Overdue Milestone'), 'Overdue milestone should appear.');
         $this->assertTrue(!str_contains($lines, 'Completed Milestone'), 'Completed milestone should be filtered.');
+    }
+
+    private function testHealth(): void
+    {
+        $store = new MemoryCycleStore();
+        $store->addCycle('Health Cycle', '2026-01-01', '2026-02-01', 'Owner');
+        $store->addMilestone(1, 'Complete Milestone', date('Y-m-d', strtotime('-2 days')), 'Owner');
+        $store->addMilestone(1, 'Upcoming Milestone', date('Y-m-d', strtotime('+3 days')), 'Owner');
+        $store->updateMilestoneStatus(1, 'complete');
+        $output = new Output(true);
+        $app = new App($output);
+
+        $exitCode = $app->handle(['app', 'health', '10'], $store);
+        $this->assertTrue($exitCode === 0, 'Health should succeed.');
+
+        $lines = implode("\n", $output->lines());
+        $this->assertTrue(str_contains($lines, 'Health Cycle'), 'Cycle should appear in health table.');
+        $this->assertTrue(str_contains($lines, 'Upcoming'), 'Health header should include Upcoming column.');
     }
 }

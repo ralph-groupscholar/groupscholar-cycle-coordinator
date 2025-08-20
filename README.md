@@ -8,6 +8,7 @@ CLI to orchestrate scholarship cycle planning: track cycles, milestones, and ops
 - View a cycle detail dashboard with milestones and notes
 - Track upcoming milestones across cycles
 - Track overdue milestones within a recent window
+- Review cycle health with milestone completion and risk counts
 - Update milestone statuses
 - Seed realistic sample cycles for a live demo
 - PostgreSQL schema isolation via `groupscholar_cycle_coordinator`
@@ -41,6 +42,7 @@ php bin/cycle-coordinator.php add-note 1 "Confirm reviewer onboarding dates"
 php bin/cycle-coordinator.php cycle 1
 php bin/cycle-coordinator.php upcoming 45
 php bin/cycle-coordinator.php overdue 30
+php bin/cycle-coordinator.php health 14
 ```
 
 ## Tests

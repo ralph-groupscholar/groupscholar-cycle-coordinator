@@ -47,6 +47,8 @@ class App
                 return $this->handleUpcoming($argv, $repository);
             case 'overdue':
                 return $this->handleOverdue($argv, $repository);
+            case 'health':
+                return $this->handleHealth($argv, $repository);
             default:
                 $this->output->error("Unknown command: {$command}");
                 $this->printHelp();
@@ -232,6 +234,48 @@ class App
         return 0;
     }
 
+    private function handleHealth(array $argv, CycleStore $repository): int
+    {
+        $days = $argv[2] ?? '14';
+        if (!is_numeric($days) || (int) $days <= 0) {
+            $this->output->error('Usage: health 14');
+            return 1;
+        }
+
+        $rows = $repository->listCycleHealth((int) $days);
+        if (count($rows) === 0) {
+            $this->output->info('No cycles found.');
+            return 0;
+        }
+
+        $table = [];
+        foreach ($rows as $row) {
+            $total = (int) $row['milestone_total'];
+            $complete = (int) $row['milestone_complete'];
+            $progress = $total > 0 ? (int) round(($complete / $total) * 100) : 0;
+
+            $table[] = [
+                $row['id'],
+                $row['name'],
+                $row['status'],
+                $row['owner'],
+                $row['start_date'],
+                $row['end_date'],
+                $row['milestone_total'],
+                $row['milestone_overdue'],
+                $row['milestone_upcoming'],
+                "{$progress}%",
+            ];
+        }
+
+        $this->output->table(
+            ['ID', 'Name', 'Status', 'Owner', 'Start', 'End', 'Milestones', 'Overdue', 'Upcoming', 'Complete'],
+            $table
+        );
+
+        return 0;
+    }
+
     private function renderCycles(array $cycles): void
     {
         if (count($cycles) === 0) {
@@ -316,5 +360,6 @@ class App
         $this->output->line('  cycle 1');
         $this->output->line('  upcoming 30');
         $this->output->line('  overdue 30');
+        $this->output->line('  health 14');
     }
 }
